@@ -17,14 +17,11 @@ export const setJwtAuthCookie = ({ res, userId }: Cookie) => {
       expiresIn: expiresIn || "7d",
    });
 
-   // Check if cross-domain (not localhost)
-   const isCrossDomain = !Env.FRONTEND_ORIGIN.includes('localhost');
-
    return res.cookie("accessToken", token, {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: isCrossDomain || Env.NODE_ENV === "production",
-      sameSite: isCrossDomain ? "none" : "lax",
+      secure: Env.NODE_ENV === "production",
+      sameSite: Env.NODE_ENV === "production" ? "none" : "lax",
    })
 };
 
