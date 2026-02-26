@@ -15,7 +15,7 @@ import { initializeSocket } from "./lib/socket";
 
 const app = express();
 
-const server= http.createServer(app)
+const server = http.createServer(app)
 
 //socket
 initializeSocket(server);
@@ -46,6 +46,17 @@ app.get("/health", asyncHandler(async (req: Request, res: Response) => {
    res.status(HTTPSTATUS.OK).json({
       status: "OK",
       message: "Server is healthy"
+   })
+}))
+
+app.get("/debug", asyncHandler(async (req: Request, res: Response) => {
+   res.status(HTTPSTATUS.OK).json({
+      nodeEnv: Env.NODE_ENV,
+      frontendOrigin: Env.FRONTEND_ORIGIN,
+      cookieSettings: {
+         secure: !Env.FRONTEND_ORIGIN.includes('localhost') || Env.NODE_ENV === "production",
+         sameSite: !Env.FRONTEND_ORIGIN.includes('localhost') ? "none" : "lax",
+      }
    })
 }))
 
