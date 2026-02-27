@@ -15,21 +15,15 @@ import {
 const router = Router();
 
 // Apply authentication middleware to all routes
-router.use(passportAuthenticateJwt);
-
-// Post routes
-router.post("/create", createPostController);
-router.get("/feed", getFeedController);
-router.get("/user/:userId", getUserPostsController);
-router.get("/:postId", getPostByIdController);
-router.delete("/:postId", deletePostController);
-
-// Like routes
-router.post("/:postId/like", likePostController);
-router.delete("/:postId/like", unlikePostController);
-
-// Comment routes
-router.post("/:postId/comment", createCommentController);
-router.get("/:postId/comments", getCommentsController);
+router.use(passportAuthenticateJwt)
+   .post("/create", createPostController)
+   .get("/feed", getFeedController)
+   .get("/user/:userId", getUserPostsController)
+   .get("/:postId", getPostByIdController)
+   .delete("/:postId", deletePostController)
+   .post("/:postId/like", likePostController)
+   .delete("/:postId/like", unlikePostController)
+   .post("/:postId/comment", createCommentController)
+   .get("/:postId/comments", getCommentsController)
 
 export default router;

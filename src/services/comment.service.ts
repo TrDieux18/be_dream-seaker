@@ -14,6 +14,8 @@ export const createCommentService = async (
    const post = await PostModel.findById(postId);
    if (!post) throw new NotFoundException("Post not found");
 
+
+
    if (body.parentCommentId) {
       const parentComment = await CommentModel.findById(body.parentCommentId);
       if (!parentComment) throw new NotFoundException("Parent comment not found");
@@ -29,13 +31,13 @@ export const createCommentService = async (
       parentComment: body.parentCommentId || null
    });
 
-   
+
    post.commentsCount += 1;
    await post.save();
 
    const populatedComment = await comment.populate("user", "name avatar");
 
- 
+
    const io = getSocketIO();
    if (io) {
       io.emit(`post:${postId}:new-comment`, {

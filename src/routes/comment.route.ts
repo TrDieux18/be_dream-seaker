@@ -9,11 +9,10 @@ import {
 
 const router = Router();
 
-router.use(passportAuthenticateJwt);
-
-router.get("/:commentId/replies", getRepliesController);
-router.delete("/:commentId", deleteCommentController);
-router.post("/:commentId/like", likeCommentController);
-router.delete("/:commentId/like", unlikeCommentController);
+router.use(passportAuthenticateJwt)
+   .get("/:commentId/replies", getRepliesController)
+   .delete("/:commentId", deleteCommentController)
+   .post("/:commentId/like", likeCommentController)
+   .delete("/:commentId/like", unlikeCommentController);
 
 export default router;
