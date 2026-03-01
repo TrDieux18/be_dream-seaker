@@ -15,7 +15,7 @@ const onlineUsers = new Map<string, string>();
 export const initializeSocket = (httpServer: HTTPServer) => {
    io = new Server(httpServer, {
       cors: {
-         origin: Env.FRONTEND_ORIGIN,
+         origin: Env.FRONTEND_ORIGIN ? Env.FRONTEND_ORIGIN.split(",") : [],
          methods: ["GET", "POST"],
          credentials: true,
       },
@@ -116,7 +116,7 @@ export const emitNewChatToParticpants = (
 };
 
 export const emitNewMessageToChatRoom = (
-   senderId: string, 
+   senderId: string,
    chatId: string,
    message: any
 ) => {
