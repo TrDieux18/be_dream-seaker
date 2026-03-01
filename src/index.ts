@@ -15,7 +15,7 @@ import { initializeSocket } from "./lib/socket";
 
 const app = express();
 
-const server= http.createServer(app)
+const server = http.createServer(app)
 
 //socket
 initializeSocket(server);
@@ -34,7 +34,7 @@ app.use(cookieParser())
 app.use(express.urlencoded({ extended: true }));
 app.use(
    cors({
-      origin: Env.FRONTEND_ORIGIN,
+      origin: Env.FRONTEND_ORIGIN ? Env.FRONTEND_ORIGIN.split(",") : [],
       credentials: true
    })
 );
