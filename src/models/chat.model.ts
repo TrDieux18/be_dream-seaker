@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface ChatDocument extends Document {
    participants: mongoose.Types.ObjectId[];
    lastMessage: mongoose.Types.ObjectId | null;
+   lastReadMessages: Map<string, mongoose.Types.ObjectId>;
    isGroup: boolean;
    groupName: string;
    groupImage: string;
@@ -23,6 +24,11 @@ const chatSchema = new Schema<ChatDocument>({
       type: Schema.Types.ObjectId,
       ref: "Message",
       default: null
+   },
+   lastReadMessages: {
+      type: Map,
+      of: Schema.Types.ObjectId,
+      default: {}
    },
    isGroup: {
       type: Boolean,

@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../middleware/async-handler.middleware";
-import { chatIdBodySchema, chatIdSchema, createChatSchema, paginationQuerySchema, updateGroupImageSchema, updateGroupNameSchema } from "../validators/chat.validator";
+import { chatIdBodySchema, chatIdSchema, createChatSchema, markAsReadSchema, paginationQuerySchema, updateGroupImageSchema, updateGroupNameSchema } from "../validators/chat.validator";
 import { HTTPSTATUS } from "../config/http.config";
-import { createChatService, deleteChatService, deleteGroupImageService, deleteGroupNameService, getSingleChatService, getUserChatsService, updateGroupImageService, updateGroupNameService } from "../services/chat.service";
+import { createChatService, deleteChatService, deleteGroupImageService, deleteGroupNameService, getSingleChatService, getUserChatsService, markChatAsReadService, updateGroupImageService, updateGroupNameService } from "../services/chat.service";
 import cloudinary from "../config/cloudinary.config";
 import { emitChatDeletedToParticipants, emitGroupUpdatedToParticipants } from "../lib/socket";
 
@@ -172,6 +172,20 @@ export const deleteChatController = asyncHandler(
       return res.status(HTTPSTATUS.OK).json({
          message: "Chat deleted successfully",
          chatId: result.chatId
+      })
+   }
+)
+
+export const markChatAsReadController = asyncHandler(
+   async (req: Request, res: Response) => {
+      const userId = req.user?._id;
+      const body = markAsReadSchema.parse(req.body);
+
+      const result = await markChatAsReadService(body.chatId, userId as string, body.messageId);
+
+      return res.status(HTTPSTATUS.OK).json({
+         message: "Chat marked as read",
+         ...result
       })
    }
 )

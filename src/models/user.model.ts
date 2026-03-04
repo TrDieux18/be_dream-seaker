@@ -3,8 +3,8 @@ import { compareValue, hashValue } from "../utils/bcrypt";
 
 export interface UserDocument extends Document {
    name: string;
-   email: string;
-   password: string;
+   email?: string;
+   password?: string;
    avatar?: string | null;
    bio?: string;
    createdAt: Date;

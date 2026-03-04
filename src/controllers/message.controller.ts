@@ -44,7 +44,8 @@ export const deleteMessageController = asyncHandler(
 
       return res.status(HTTPSTATUS.OK).json({
          message: "Message deleted successfully",
-         messageId: result.messageId
+         messageId: result.messageId,
+         newLastMessage: result.newLastMessage
       })
    }
 )

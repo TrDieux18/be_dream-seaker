@@ -90,7 +90,6 @@ export const deleteMessageService = async (
     throw new NotFoundException("Message not found");
   }
 
-  // Check if user is the sender or a participant in the chat
   const chat = await ChatModel.findOne({
     _id: message.chatId,
     participants: { $in: [userId] },
@@ -104,7 +103,7 @@ export const deleteMessageService = async (
 
   await MessageModel.findByIdAndDelete(messageId);
 
-  // Update last message if the deleted message was the last one
+  
   if (chat.lastMessage?.toString() === messageId) {
     const newLastMessage = await MessageModel.findOne({
       chatId: message.chatId,

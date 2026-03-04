@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { passportAuthenticateJwt } from "../config/passport.config";
-import { createChatController, deleteChatController, deleteGroupImageController, deleteGroupNameController, getSingleChatController, getUserChatsController, updateGroupImageController, updateGroupNameController } from "../controllers/chat.controller";
+import { createChatController, deleteChatController, deleteGroupImageController, deleteGroupNameController, getSingleChatController, getUserChatsController, markChatAsReadController, updateGroupImageController, updateGroupNameController } from "../controllers/chat.controller";
 import { clearChatMessagesController, deleteMessageController, editMessageController, sendMessageController } from "../controllers/message.controller";
 
 const chatRoutes = Router()
    .use(passportAuthenticateJwt)
    .post("/create", createChatController)
    .post("/message/send", sendMessageController)
+   .post("/mark-read", markChatAsReadController)
    .get("/all", getUserChatsController)
    .get("/:id", getSingleChatController)
    .put("/group/image", updateGroupImageController)

@@ -29,3 +29,8 @@ export const paginationQuerySchema = z.object({
    limit: z.string().optional().transform((val) => val ? parseInt(val, 10) : 20),
    offset: z.string().optional().transform((val) => val ? parseInt(val, 10) : 0)
 });
+
+export const markAsReadSchema = z.object({
+   chatId: z.string().trim().min(1),
+   messageId: z.string().trim().min(1)
+});

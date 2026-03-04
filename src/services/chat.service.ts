@@ -63,9 +63,10 @@ export const createChatService = async (
 
 export const getUserChatsService = async (
   userId: string,
-  limit: number = 20,
+  limit: number = 10,
   offset: number = 0
 ) => {
+
   const chats = await ChatModel.find({
     participants: {
       $in: [userId],
@@ -81,16 +82,27 @@ export const getUserChatsService = async (
     })
     .sort({ updatedAt: -1 })
     .skip(offset)
-    .limit(limit);
+    .limit(limit)
+    .lean();
 
-  // Get total count for hasMore calculation
+  const chatsWithReadStatus = chats.map((chat: any) => ({
+    ...chat,
+    lastReadMessages: chat.lastReadMessages
+      ? Object.fromEntries(Object.entries(chat.lastReadMessages))
+      : {},
+  }));
+
   const totalCount = await ChatModel.countDocuments({
     participants: {
       $in: [userId],
     },
   });
 
-  return { chats, totalCount, hasMore: offset + chats.length < totalCount };
+  return {
+    chats: chatsWithReadStatus,
+    totalCount,
+    hasMore: offset + chats.length < totalCount,
+  };
 };
 
 export const getSingleChatService = async (chatId: string, userId: string) => {
@@ -118,8 +130,11 @@ export const getSingleChatService = async (chatId: string, userId: string) => {
     })
     .sort({ createdAt: 1 });
 
+  const chatObject: any = chat.toObject();
+  chatObject.lastReadMessages = Object.fromEntries(chat.lastReadMessages);
+
   return {
-    chat,
+    chat: chatObject,
     messages,
   };
 };
@@ -255,4 +270,42 @@ export const deleteChatService = async (chatId: string, userId: string) => {
   await ChatModel.findByIdAndDelete(chatId);
 
   return { chatId, participants: chat.participants };
+};
+
+export const markChatAsReadService = async (
+  chatId: string,
+  userId: string,
+  messageId: string
+) => {
+  const chat = await ChatModel.findOne({
+    _id: chatId,
+    participants: { $in: [userId] },
+  });
+
+  if (!chat) {
+    throw new BadRequestException(
+      "Chat not found or you are not authorized to access this chat"
+    );
+  }
+
+  // Verify message exists in this chat
+  const message = await MessageModel.findOne({
+    _id: messageId,
+    chatId: chatId,
+  });
+
+  if (!message) {
+    throw new NotFoundException("Message not found in this chat");
+  }
+
+  // Update lastReadMessages map
+  chat.lastReadMessages.set(userId, message._id as any);
+  await chat.save();
+
+  return {
+    chatId,
+    userId,
+    messageId,
+    lastReadMessages: Object.fromEntries(chat.lastReadMessages),
+  };
 };
