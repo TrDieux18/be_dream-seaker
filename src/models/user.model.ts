@@ -18,8 +18,10 @@ const userSchema = new Schema<UserDocument>(
       email: { type: String, required: true, unique: true, trim: true },
       password: { type: String, required: true },
       avatar: { type: String, default: null },
-      bio: { type: String, default: "", maxlength: 150 }
+      bio: { type: String, default: "", maxlength: 150 },
+
    },
+
    {
       timestamps: true,
       toJSON: {

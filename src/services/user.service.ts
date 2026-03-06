@@ -1,7 +1,7 @@
 import UserModel from "../models/user.model";
 import PostModel from "../models/post.model";
 import ChatModel from "../models/chat.model";
-import { BadRequestException, NotFoundException } from "../utils/app-error";
+import { NotFoundException } from "../utils/app-error";
 
 export const findByIdUserService = async (userId: string) => {
    return await UserModel.findById(userId);
@@ -22,23 +22,24 @@ export const getUserProfileService = async (userId: string, currentUserId: strin
       throw new NotFoundException("User not found");
    }
 
-   // Get user statistics
+
+
    const postsCount = await PostModel.countDocuments({ user: userId });
 
-   // For followers/following, we can use chat participants as a proxy
-   // In a full implementation, you'd have a separate Follow model
+
    const chatsCount = await ChatModel.countDocuments({
       participants: { $in: [userId] }
    });
 
-   const isOwnProfile = userId === currentUserId;
+   const isOwnProfile = userId === currentUserId.toString();
+   console.log("isOwnProfile:", isOwnProfile);
 
    return {
       user,
       stats: {
          posts: postsCount,
-         followers: 0, // Placeholder - implement follow system later
-         following: 0, // Placeholder - implement follow system later
+         followers: 0,
+         following: 0,
          chats: chatsCount
       },
       isOwnProfile

@@ -14,7 +14,6 @@ import {
 
 const router = Router();
 
-// Apply authentication middleware to all routes
 router.use(passportAuthenticateJwt)
    .post("/create", createPostController)
    .get("/feed", getFeedController)

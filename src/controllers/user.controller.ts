@@ -50,7 +50,7 @@ export const updateUserProfileController = asyncHandler(
       const userId = req.user?._id;
       const body = updateProfileSchema.parse(req.body);
 
-      // Handle avatar upload if provided
+      
       if (body.avatar && body.avatar.startsWith('data:image')) {
          try {
             const uploadRes = await cloudinary.uploader.upload(body.avatar, {
