@@ -41,4 +41,5 @@ followSchema.pre("save", function (next) {
    next();
 });
 
-export default mongoose.model("Follow", followSchema, "follows");
+const FollowModel = mongoose.model("Follow", followSchema, "follows");
+export default FollowModel;

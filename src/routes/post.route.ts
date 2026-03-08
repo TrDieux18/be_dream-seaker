@@ -12,9 +12,8 @@ import {
    getUserPostsController
 } from "../controllers/post.controller";
 
-const router = Router();
-
-router.use(passportAuthenticateJwt)
+const postRouter = Router()
+   .use(passportAuthenticateJwt)
    .post("/create", createPostController)
    .get("/feed", getFeedController)
    .get("/user/:userId", getUserPostsController)
@@ -25,4 +24,4 @@ router.use(passportAuthenticateJwt)
    .post("/:postId/comment", createCommentController)
    .get("/:postId/comments", getCommentsController)
 
-export default router;
+export default postRouter;

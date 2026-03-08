@@ -1,5 +1,6 @@
 import PostModel from "../models/post.model";
 import CommentModel from "../models/comment.model";
+import FollowModel from "../models/follow.model";
 import { BadRequestException, NotFoundException } from "../utils/app-error";
 import { getSocketIO } from "../lib/socket";
 
@@ -25,14 +26,33 @@ export const createPostService = async (
 export const getFeedService = async (userId: string, page: number = 1, limit: number = 10) => {
    const skip = (page - 1) * limit;
 
-   const posts = await PostModel.find()
+   const following = await FollowModel.find({ followerId: userId })
+      .select("followingId")
+      .lean();
+
+   const followingIds = following.map(f => f.followingId);
+   const userIds = [...followingIds, userId];
+
+   const posts = await PostModel.find({ user: { $in: userIds } })
       .populate("user", "name avatar")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-   const total = await PostModel.countDocuments();
+   const total = await PostModel.countDocuments({ user: { $in: userIds } });
+
+   if (posts.length < limit) {
+      const remaining = limit - posts.length;
+      const additionalPosts = await PostModel.find({ user: { $nin: userIds } })
+         .populate("user", "name avatar")
+         .sort({ createdAt: -1 })
+         .skip(skip)
+         .limit(remaining)
+         .lean();
+
+      posts.push(...additionalPosts);
+   }
 
    return {
       posts,
