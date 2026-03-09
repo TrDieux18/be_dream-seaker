@@ -3,9 +3,6 @@ import UserModel from "../models/user.model";
 
 
 export const followUserService = async (currentUserId: string, userIdToFollow: string) => {
-   console.log("Current User ID:", currentUserId);
-   console.log("User ID to Follow:", userIdToFollow);
-
    const user = await UserModel.findById(userIdToFollow);
 
    if (!user) {
@@ -29,4 +26,32 @@ export const followUserService = async (currentUserId: string, userIdToFollow: s
    await followDoc.save();
 
    return followDoc;
+}
+
+export const unfollowUserService = async (currentUserId: string, userIdToUnfollow: string) => {
+   const user = await UserModel.findById(userIdToUnfollow);
+
+   if (!user) {
+      throw new Error("User not found");
+   }
+
+   const followDoc = await FollowModel.findOneAndDelete({
+      followerId: currentUserId,
+      followingId: userIdToUnfollow
+   });
+
+   if (!followDoc) {
+      throw new Error("You are not following this user");
+   }
+
+   return { message: "Unfollowed successfully" };
+}
+
+export const checkFollowStatusService = async (currentUserId: string, targetUserId: string) => {
+   const isFollowing = await FollowModel.exists({
+      followerId: currentUserId,
+      followingId: targetUserId
+   });
+
+   return { isFollowing: !!isFollowing };
 }

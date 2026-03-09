@@ -5,7 +5,8 @@ import {
    getUserProfileController,
    getUserPostsController,
    updateUserProfileController,
-   searchUsersController
+   searchUsersController,
+   suggestionUsersController
 } from "../controllers/user.controller";
 
 const userRoutes = Router()
@@ -15,5 +16,6 @@ const userRoutes = Router()
    .get("/profile/:userId", getUserProfileController)
    .get("/profile/:userId/posts", getUserPostsController)
    .put("/profile", updateUserProfileController)
+   .get("/suggest", suggestionUsersController)
 
 export default userRoutes;

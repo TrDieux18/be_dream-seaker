@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../middleware/async-handler.middleware";
 import { HTTPSTATUS } from "../config/http.config";
-import { getUsersService, getUserProfileService, getUserPostsService, updateUserProfileService } from "../services/user.service";
+import { getUsersService, getUserProfileService, getUserPostsService, updateUserProfileService, suggestionUsersService } from "../services/user.service";
 import { userIdParamSchema, updateProfileSchema, paginationQuerySchema } from "../validators/user.validator";
 import cloudinary from "../config/cloudinary.config";
 
@@ -94,3 +94,14 @@ export const searchUsersController = asyncHandler(
       });
    }
 );
+
+export const suggestionUsersController = asyncHandler(
+   async (req: Request, res: Response) => {
+      const currentUserId = req.user?._id;
+      const suggestions = await suggestionUsersService(currentUserId as string);
+      return res.status(HTTPSTATUS.OK).json({
+         message: "User suggestions retrieved successfully",
+         suggestions
+      });
+   }
+)

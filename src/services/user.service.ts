@@ -43,13 +43,16 @@ export const getUserProfileService = async (userId: string, currentUserId: strin
       participants: { $in: [userId] }
    });
 
-   const followersCount = await FollowModel.countDocuments({ following: userId });
-   console.log("Followers Count:", followersCount);
-   const followingCount = await FollowModel.countDocuments({ follower: userId });
-   console.log("Following Count:", followingCount);
+   const followersCount = await FollowModel.countDocuments({ followingId: userId });
+   const followingCount = await FollowModel.countDocuments({ followerId: userId });
 
    const isOwnProfile = userId === currentUserId.toString();
 
+   // Check if current user is following this profile
+   const isFollowing = !isOwnProfile && await FollowModel.exists({
+      followerId: currentUserId,
+      followingId: userId
+   });
 
    return {
       user,
@@ -59,7 +62,8 @@ export const getUserProfileService = async (userId: string, currentUserId: strin
          following: followingCount,
          chats: chatsCount
       },
-      isOwnProfile
+      isOwnProfile,
+      isFollowing: !!isFollowing
    };
 };
 
@@ -94,16 +98,27 @@ export const updateUserProfileService = async (
 
    }
 
-   console.log("Current User:", updates.username);
 
    if (updates.name) user.name = updates.name;
    if (updates.bio !== undefined) user.bio = updates.bio;
    if (updates.avatar) user.avatar = updates.avatar;
    if (updates.username) user.username = updates.username;
-   console.log("Updated User:", user);
+
    await user.save();
 
    const { password, ...userObject } = user.toObject();
 
    return userObject;
 };
+
+export const suggestionUsersService = async (currentUserId: string) => {
+
+   const following = await FollowModel.find({ followerId: currentUserId }).select("followingId");
+   const followingIds = following.map(f => f.followingId);
+   const suggestions = await UserModel.aggregate([
+      { $match: { _id: { $ne: currentUserId, $nin: followingIds } } },
+      { $sample: { size: 5 } }
+   ]);
+
+   return suggestions;
+}

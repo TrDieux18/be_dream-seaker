@@ -28,11 +28,7 @@ export const getUserChatsController = asyncHandler(
       const userId = req.user?._id;
       const { limit, offset } = paginationQuerySchema.parse(req.query);
 
-      console.log("📋 getUserChats - userId:", userId, "limit:", limit, "offset:", offset);
-
       const { chats, totalCount, hasMore } = await getUserChatsService(userId, limit, offset);
-
-      console.log("📋 getUserChats - chats found:", chats.length, "totalCount:", totalCount, "hasMore:", hasMore);
 
       return res.status(HTTPSTATUS.OK).json({
          message: "User chats retrieved successfully",

@@ -25,19 +25,34 @@ export const initializeSocket = (httpServer: HTTPServer) => {
       try {
          const rawCookie = socket.handshake.headers.cookie;
 
-         if (!rawCookie) return next(new Error("Unauthorized"));
+         if (!rawCookie) {
+            return next(new Error("Unauthorized"));
+         }
 
-         const token = rawCookie?.split("=")?.[1]?.trim();
-         if (!token) return next(new Error("Unauthorized"));
+         // Parse cookie properly
+         const cookies: { [key: string]: string } = {};
+         rawCookie.split(';').forEach(cookie => {
+            const [name, ...rest] = cookie.trim().split('=');
+            cookies[name] = rest.join('=');
+         });
+
+         const token = cookies.accessToken;
+
+         if (!token) {
+            return next(new Error("Unauthorized"));
+         }
 
          const decodedToken = jwt.verify(token, Env.JWT_SECRET) as {
             userId: string;
          };
-         if (!decodedToken) return next(new Error("Unauthorized"));
+         if (!decodedToken) {
+            return next(new Error("Unauthorized"));
+         }
 
          socket.userId = decodedToken.userId;
          next();
       } catch (error) {
+         console.error("Socket authentication error:", error);
          next(new Error("Internal server error"));
       }
    });
@@ -65,8 +80,6 @@ export const initializeSocket = (httpServer: HTTPServer) => {
             try {
                await validateChatParticipant(chatId, userId);
                socket.join(`chat:${chatId}`);
-               console.log(`User ${userId} join room chat:${chatId}`);
-
                callback?.();
             } catch (error) {
                callback?.("Error joining chat");
@@ -77,20 +90,13 @@ export const initializeSocket = (httpServer: HTTPServer) => {
       socket.on("chat:leave", (chatId: string) => {
          if (chatId) {
             socket.leave(`chat:${chatId}`);
-            console.log(`User ${userId} left room chat:${chatId}`);
          }
       });
 
       socket.on("disconnect", () => {
          if (onlineUsers.get(userId) === newSocketId) {
             if (userId) onlineUsers.delete(userId);
-
             io?.emit("online:users", Array.from(onlineUsers.keys()));
-
-            console.log("socket disconnected", {
-               userId,
-               newSocketId,
-            });
          }
       });
    });
@@ -122,10 +128,6 @@ export const emitNewMessageToChatRoom = (
 ) => {
    const io = getIO();
    const senderSocketId = onlineUsers.get(senderId?.toString());
-
-   console.log(senderId, "senderId");
-   console.log(senderSocketId, "sender socketid exist");
-   console.log("All online users:", Object.fromEntries(onlineUsers));
 
    if (senderSocketId) {
       io.to(`chat:${chatId}`).except(senderSocketId).emit("message:new", message);
