@@ -34,7 +34,7 @@ export const getFeedService = async (userId: string, page: number = 1, limit: nu
    const userIds = [...followingIds, userId];
 
    const posts = await PostModel.find({ user: { $in: userIds } })
-      .populate("user", "name avatar")
+      .populate("user", "name username avatar")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -45,7 +45,7 @@ export const getFeedService = async (userId: string, page: number = 1, limit: nu
    if (posts.length < limit) {
       const remaining = limit - posts.length;
       const additionalPosts = await PostModel.find({ user: { $nin: userIds } })
-         .populate("user", "name avatar")
+         .populate("user", "name username avatar")
          .sort({ createdAt: -1 })
          .skip(skip)
          .limit(remaining)
@@ -67,7 +67,7 @@ export const getFeedService = async (userId: string, page: number = 1, limit: nu
 
 export const getUserPostsService = async (userId: string, targetUserId: string) => {
    const posts = await PostModel.find({ user: targetUserId })
-      .populate("user", "name avatar")
+      .populate("user", "name username avatar")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -75,8 +75,9 @@ export const getUserPostsService = async (userId: string, targetUserId: string) 
 };
 
 export const getPostByIdService = async (postId: string) => {
+   // console.log("Fetching post with ID:", postId);
    const post = await PostModel.findById(postId)
-      .populate("user", "name avatar")
+      .populate("user", "name username avatar")
       .lean();
 
    if (!post) throw new NotFoundException("Post not found");

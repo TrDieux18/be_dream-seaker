@@ -4,13 +4,38 @@ import {
   LoginSchemaType,
   RegisterSchemaType,
 } from "../validators/auth.validator";
+import { generateUsernameSuggestions } from "../utils/generate-usernames";
 
 export const registerService = async (body: RegisterSchemaType) => {
-  const { email } = body;
+  const { email, name } = body;
+
+  
   const existingUser = await UserModel.findOne({ email });
   if (existingUser) throw new UnauthorizedException("User already exist");
+
+  
+  const suggestions = generateUsernameSuggestions(name, 20);
+  let username = "";
+
+  
+  for (const suggestion of suggestions) {
+    const existingUsername = await UserModel.findOne({ username: suggestion });
+    if (!existingUsername) {
+      username = suggestion;
+      break;
+    }
+  }
+
+  
+  if (!username) {
+    const baseUsername = suggestions[0] || "user";
+    const randomNum = Math.floor(Math.random() * 10000);
+    username = `${baseUsername}${randomNum}`;
+  }
+
   const newUser = new UserModel({
     name: body.name,
+    username: username,
     email: body.email,
     password: body.password,
     avatar: body.avatar,

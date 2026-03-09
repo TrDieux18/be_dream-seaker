@@ -3,6 +3,7 @@ import { compareValue, hashValue } from "../utils/bcrypt";
 
 export interface UserDocument extends Document {
    name: string;
+   username: string;
    email?: string;
    password?: string;
    avatar?: string | null;
@@ -15,6 +16,7 @@ export interface UserDocument extends Document {
 const userSchema = new Schema<UserDocument>(
    {
       name: { type: String, required: true },
+      username: { type: String, required: true, unique: true, trim: true, minlength: 3, maxlength: 15 },
       email: { type: String, required: true, unique: true, trim: true },
       password: { type: String, required: true },
       avatar: { type: String, default: null },

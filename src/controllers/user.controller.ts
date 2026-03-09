@@ -50,7 +50,7 @@ export const updateUserProfileController = asyncHandler(
       const userId = req.user?._id;
       const body = updateProfileSchema.parse(req.body);
 
-      
+
       if (body.avatar && body.avatar.startsWith('data:image')) {
          try {
             const uploadRes = await cloudinary.uploader.upload(body.avatar, {
@@ -75,6 +75,22 @@ export const updateUserProfileController = asyncHandler(
       return res.status(HTTPSTATUS.OK).json({
          message: "Profile updated successfully",
          user: updatedUser
+      });
+   }
+);
+
+export const searchUsersController = asyncHandler(
+   async (req: Request, res: Response) => {
+      const { query } = req.query as { query: string };
+
+
+      const currentUserId = req.user?._id;
+      const users = await getUsersService(currentUserId as string, query);
+
+
+      return res.status(HTTPSTATUS.OK).json({
+         message: "Users searched successfully",
+         users
       });
    }
 );

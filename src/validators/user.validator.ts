@@ -7,7 +7,8 @@ export const userIdParamSchema = z.object({
 export const updateProfileSchema = z.object({
    name: z.string().trim().min(1).max(50).optional(),
    bio: z.string().max(150).optional(),
-   avatar: z.string().optional()
+   avatar: z.string().optional(),
+   username: z.string().trim().min(3).max(15).optional()
 });
 
 export const paginationQuerySchema = z.object({
