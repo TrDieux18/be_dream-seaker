@@ -1,5 +1,6 @@
 import { emitNewChatToParticpants } from "../lib/socket";
 import ChatModel from "../models/chat.model";
+import FollowModel from "../models/follow.model";
 import MessageModel from "../models/message.model";
 import UserModel from "../models/user.model";
 import { BadRequestException, NotFoundException } from "../utils/app-error";
@@ -13,6 +14,9 @@ export const createChatService = async (
     groupName?: string;
   }
 ) => {
+
+
+
   const { participantId, isGroup, participants, groupName } = body;
 
   let chat;
@@ -50,7 +54,7 @@ export const createChatService = async (
   // Implement websocket
   const populatedChat = await chat?.populate(
     "participants",
-    "name avatar isAI"
+    "name avatar"
   );
   const particpantIdStrings = populatedChat?.participants?.map((p) => {
     return p._id?.toString();
@@ -106,6 +110,8 @@ export const getUserChatsService = async (
 };
 
 export const getSingleChatService = async (chatId: string, userId: string) => {
+
+
   const chat = await ChatModel.findOne({
     _id: chatId,
     participants: {
