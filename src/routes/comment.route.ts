@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { passportAuthenticateJwt } from "../config/passport.config";
 import {
-   getRepliesController,
    deleteCommentController,
    likeCommentController,
    unlikeCommentController
@@ -9,7 +8,6 @@ import {
 
 const commentRouter = Router()
    .use(passportAuthenticateJwt)
-   .get("/:commentId/replies", getRepliesController)
    .delete("/:commentId", deleteCommentController)
    .post("/:commentId/like", likeCommentController)
    .delete("/:commentId/like", unlikeCommentController);

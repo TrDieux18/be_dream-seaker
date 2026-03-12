@@ -1,8 +1,7 @@
 import { z } from "zod";
 
 export const createCommentSchema = z.object({
-   content: z.string().min(1, "Comment content is required").trim(),
-   parentCommentId: z.string().optional()
+   content: z.string().min(1, "Comment content is required").trim()
 });
 
 export const commentIdSchema = z.object({

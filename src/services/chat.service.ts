@@ -62,7 +62,7 @@ export const createChatService = async (
 
   emitNewChatToParticpants(particpantIdStrings, populatedChat);
 
-  return chat;
+  return populatedChat;
 };
 
 export const getUserChatsService = async (

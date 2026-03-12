@@ -8,27 +8,16 @@ export const createCommentService = async (
    userId: string,
    body: {
       content: string;
-      parentCommentId?: string;
    }
 ) => {
    const post = await PostModel.findById(postId);
    if (!post) throw new NotFoundException("Post not found");
 
-
-
-   if (body.parentCommentId) {
-      const parentComment = await CommentModel.findById(body.parentCommentId);
-      if (!parentComment) throw new NotFoundException("Parent comment not found");
-      if (parentComment.post.toString() !== postId) {
-         throw new BadRequestException("Parent comment does not belong to this post");
-      }
-   }
-
    const comment = await CommentModel.create({
       post: postId,
       user: userId,
       content: body.content,
-      parentComment: body.parentCommentId || null
+      parentComment: null
    });
 
 
@@ -56,15 +45,14 @@ export const getCommentsService = async (postId: string, page: number = 1, limit
 
    const skip = (page - 1) * limit;
 
-   // Get top-level comments only (no parent)
-   const comments = await CommentModel.find({ post: postId, parentComment: null })
+   const comments = await CommentModel.find({ post: postId })
       .populate("user", "name avatar")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-   const total = await CommentModel.countDocuments({ post: postId, parentComment: null });
+   const total = await CommentModel.countDocuments({ post: postId });
 
    return {
       comments,
@@ -75,18 +63,6 @@ export const getCommentsService = async (postId: string, page: number = 1, limit
          pages: Math.ceil(total / limit)
       }
    };
-};
-
-export const getRepliesService = async (commentId: string) => {
-   const parentComment = await CommentModel.findById(commentId);
-   if (!parentComment) throw new NotFoundException("Comment not found");
-
-   const replies = await CommentModel.find({ parentComment: commentId })
-      .populate("user", "name avatar")
-      .sort({ createdAt: 1 })
-      .lean();
-
-   return replies;
 };
 
 export const deleteCommentService = async (commentId: string, userId: string) => {

@@ -3,24 +3,10 @@ import { asyncHandler } from "../middleware/async-handler.middleware";
 import { HTTPSTATUS } from "../config/http.config";
 import {
    deleteCommentService,
-   getRepliesService,
    likeCommentService,
    unlikeCommentService
 } from "../services/comment.service";
 import { commentIdSchema } from "../validators/comment.validator";
-
-export const getRepliesController = asyncHandler(
-   async (req: Request, res: Response) => {
-      const { commentId } = commentIdSchema.parse(req.params);
-
-      const replies = await getRepliesService(commentId);
-
-      return res.status(HTTPSTATUS.OK).json({
-         message: "Replies retrieved successfully",
-         replies
-      });
-   }
-);
 
 export const deleteCommentController = asyncHandler(
    async (req: Request, res: Response) => {
