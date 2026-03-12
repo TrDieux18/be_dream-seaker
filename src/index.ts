@@ -20,6 +20,15 @@ const server = http.createServer(app)
 //socket
 initializeSocket(server);
 
+app.use((req, res, next) => {
+   console.log(`${req.method} ${req.originalUrl}`, {
+      query: req.query,
+      body: req.body,
+      params: req.params,
+   });
+   next();
+});
+
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser())
 app.use(express.urlencoded({ extended: true }));

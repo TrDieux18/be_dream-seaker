@@ -3,6 +3,14 @@ import CommentModel from "../models/comment.model";
 import FollowModel from "../models/follow.model";
 import { BadRequestException, NotFoundException } from "../utils/app-error";
 import { getSocketIO } from "../lib/socket";
+import UserSavePostModel from "../models/user-save-post.model";
+
+const FEED_USER_FIELDS = "name username avatar";
+
+const POST_POPULATE_OPTIONS = {
+   path: "user",
+   select: FEED_USER_FIELDS
+} as const;
 
 export const createPostService = async (
    userId: string,
@@ -23,6 +31,40 @@ export const createPostService = async (
    return populatedPost;
 };
 
+const getPrioritizedFeedPosts = async (userIds: string[], skip: number, limit: number) => {
+   const [posts, total] = await Promise.all([
+      PostModel.find({ user: { $in: userIds } })
+         .populate(POST_POPULATE_OPTIONS)
+         .sort({ createdAt: -1 })
+         .skip(skip)
+         .limit(limit)
+         .lean(),
+      PostModel.countDocuments({ user: { $in: userIds } })
+   ]);
+
+   return { posts, total };
+};
+
+const getSuggestedFeedPosts = async (excludedUserIds: string[], skip: number, limit: number) => {
+   const query = { user: { $nin: excludedUserIds } };
+
+   const [posts, total] = await Promise.all([
+      limit > 0
+         ? PostModel.find(query)
+            .populate(POST_POPULATE_OPTIONS)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean()
+         : Promise.resolve([]),
+      PostModel.countDocuments(query)
+   ]);
+
+   return { posts, total };
+};
+
+
+
 export const getFeedService = async (userId: string, page: number = 1, limit: number = 10) => {
    const skip = (page - 1) * limit;
 
@@ -30,32 +72,31 @@ export const getFeedService = async (userId: string, page: number = 1, limit: nu
       .select("followingId")
       .lean();
 
-   const followingIds = following.map(f => f.followingId);
-   const userIds = [...followingIds, userId];
+   const followingIds = following.map((item) => item.followingId.toString());
+   const prioritizedUserIds = [...new Set([...followingIds, userId])];
 
-   const posts = await PostModel.find({ user: { $in: userIds } })
-      .populate("user", "name username avatar")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+   const prioritizedFeed = await getPrioritizedFeedPosts(prioritizedUserIds, skip, limit);
+   const remaining = Math.max(limit - prioritizedFeed.posts.length, 0);
+   const suggestedSkip = Math.max(skip - prioritizedFeed.total, 0);
+   const suggestedFeed = await getSuggestedFeedPosts(prioritizedUserIds, suggestedSkip, remaining);
 
-   const total = await PostModel.countDocuments({ user: { $in: userIds } });
+   let posts = prioritizedFeed.posts;
+   let suggestedPosts: typeof prioritizedFeed.posts = suggestedFeed.posts;
 
-   if (posts.length < limit) {
-      const remaining = limit - posts.length;
-      const additionalPosts = await PostModel.find({ user: { $nin: userIds } })
-         .populate("user", "name username avatar")
-         .sort({ createdAt: -1 })
-         .skip(skip)
-         .limit(remaining)
-         .lean();
-
-      posts.push(...additionalPosts);
+   if (remaining > 0) {
+      posts = [...posts, ...suggestedPosts];
    }
+
+   const total = prioritizedFeed.total + suggestedFeed.total;
 
    return {
       posts,
+      feedBreakdown: {
+         prioritizedCount: prioritizedFeed.posts.length,
+         suggestedCount: suggestedPosts.length,
+         prioritizedTotal: prioritizedFeed.total,
+         suggestedTotal: suggestedFeed.total
+      },
       pagination: {
          page,
          limit,
@@ -67,7 +108,7 @@ export const getFeedService = async (userId: string, page: number = 1, limit: nu
 
 export const getUserPostsService = async (userId: string, targetUserId: string) => {
    const posts = await PostModel.find({ user: targetUserId })
-      .populate("user", "name username avatar")
+      .populate(POST_POPULATE_OPTIONS)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -75,9 +116,8 @@ export const getUserPostsService = async (userId: string, targetUserId: string) 
 };
 
 export const getPostByIdService = async (postId: string) => {
-   // console.log("Fetching post with ID:", postId);
    const post = await PostModel.findById(postId)
-      .populate("user", "name username avatar")
+      .populate(POST_POPULATE_OPTIONS)
       .lean();
 
    if (!post) throw new NotFoundException("Post not found");
@@ -144,7 +184,6 @@ export const unlikePostService = async (postId: string, userId: string) => {
    post.likesCount = post.likes.length;
    await post.save();
 
-   // Emit socket event for real-time update
    const io = getSocketIO();
    if (io) {
       io.emit(`post:${postId}:unlike`, {
@@ -158,7 +197,48 @@ export const unlikePostService = async (postId: string, userId: string) => {
 };
 
 export const savePostService = async (postId: string, userId: string) => {
-   // This can be implemented by adding a "savedPosts" array to User model
-   // For now, returning success
-   return { message: "Post saved successfully" };
+   const post = await PostModel.findById(postId);
+
+   if (!post) throw new NotFoundException("Post not found");
+
+   const already = await UserSavePostModel.findOne({ userId, postId });
+   if (already) {
+      throw new BadRequestException("You have already saved this post");
+   }
+   const savePost = await UserSavePostModel.create({ userId, postId });
+   return savePost;
+};
+
+export const unsavePostService = async (postId: string, userId: string) => {
+   const savedPost = await UserSavePostModel.findOneAndDelete({ userId, postId });
+
+   if (!savedPost) {
+      throw new NotFoundException("Saved post not found");
+   }
+
+   return { postId, removed: true };
+};
+
+export const getSavedPostsService = async (userId: string) => {
+   const savedPosts = await UserSavePostModel.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate({
+         path: "postId",
+         populate: POST_POPULATE_OPTIONS
+      })
+      .lean();
+
+   const posts = savedPosts
+      .map(
+         (savedPost) =>
+            savedPost.postId as unknown as ({ _id: { toString(): string } } & Record<string, unknown>) | null
+      )
+      .filter((post): post is NonNullable<typeof post> => Boolean(post));
+
+   const savedPostIds = posts.map((post) => post._id.toString());
+
+   return {
+      posts,
+      savedPostIds
+   };
 };

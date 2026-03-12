@@ -8,7 +8,10 @@ import {
    deletePostService,
    likePostService,
    unlikePostService,
-   getUserPostsService
+   getUserPostsService,
+   savePostService,
+   unsavePostService,
+   getSavedPostsService
 } from "../services/post.service";
 import { createPostSchema, postIdSchema } from "../validators/post.validator";
 import { createCommentService, getCommentsService } from "../services/comment.service";
@@ -53,6 +56,19 @@ export const getUserPostsController = asyncHandler(
       return res.status(HTTPSTATUS.OK).json({
          message: "User posts retrieved successfully",
          posts
+      });
+   }
+);
+
+export const getSavedPostsController = asyncHandler(
+   async (req: Request, res: Response) => {
+      const userId = req.user?._id?.toString() || "";
+
+      const result = await getSavedPostsService(userId);
+
+      return res.status(HTTPSTATUS.OK).json({
+         message: "Saved posts retrieved successfully",
+         ...result
       });
    }
 );
@@ -135,6 +151,35 @@ export const getCommentsController = asyncHandler(
       return res.status(HTTPSTATUS.OK).json({
          message: "Comments retrieved successfully",
          ...result
+      });
+   }
+);
+
+export const savePostController = asyncHandler(
+   async (req: Request, res: Response) => {
+      const { postId } = postIdSchema.parse(req.params);
+      const userId = req.user?._id?.toString() || "";
+
+      const result = await savePostService(postId, userId);
+
+      return res.status(HTTPSTATUS.OK).json({
+         message: "Post saved successfully",
+         result
+      });
+
+   }
+);
+
+export const unsavePostController = asyncHandler(
+   async (req: Request, res: Response) => {
+      const { postId } = postIdSchema.parse(req.params);
+      const userId = req.user?._id?.toString() || "";
+
+      const result = await unsavePostService(postId, userId);
+
+      return res.status(HTTPSTATUS.OK).json({
+         message: "Post removed from saved successfully",
+         result
       });
    }
 );
