@@ -55,3 +55,22 @@ export const checkFollowStatusService = async (currentUserId: string, targetUser
 
    return { isFollowing: !!isFollowing };
 }
+
+
+export const getFollowerUserService = async (userId: string) => {
+
+   const followers = await FollowModel.find({
+      followingId: userId
+   }).populate("followerId", "name username avatar");
+
+   return followers;
+}
+
+export const getUserFollowingService = async (userId: string) => {
+
+   const followings = await FollowModel.find({
+      followerId: userId
+   }).populate("followingId", "name username avatar");
+
+   return followings;
+}
