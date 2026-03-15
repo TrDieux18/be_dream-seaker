@@ -5,6 +5,7 @@ import userRoutes from "./user.route";
 import postRoutes from "./post.route";
 import commentRoutes from "./comment.route";
 import followRouter from "./follow.route";
+import notificationRouter from "./notification.route";
 
 const router = Router();
 router.use("/auth", authRoutes)
@@ -13,5 +14,7 @@ router.use("/user", userRoutes);
 router.use("/post", postRoutes);
 router.use("/comment", commentRoutes);
 router.use("/follow", followRouter)
+router.use("/notification", notificationRouter)
+
 
 export default router;

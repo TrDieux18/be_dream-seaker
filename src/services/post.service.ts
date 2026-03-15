@@ -4,6 +4,7 @@ import FollowModel from "../models/follow.model";
 import { BadRequestException, NotFoundException } from "../utils/app-error";
 import { getSocketIO } from "../lib/socket";
 import UserSavePostModel from "../models/user-save-post.model";
+import { createNotification } from "./notification.service";
 
 const FEED_USER_FIELDS = "name username avatar";
 
@@ -155,6 +156,13 @@ export const likePostService = async (postId: string, userId: string) => {
    post.likes.push(userId as any);
    post.likesCount = post.likes.length;
    await post.save();
+
+   await createNotification({
+      actorId: userId,
+      recipientId: post.user._id.toString(),
+      type: "like",
+      postId
+   })
 
    // Emit socket event for real-time update
    const io = getSocketIO();

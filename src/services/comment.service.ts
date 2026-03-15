@@ -2,6 +2,7 @@ import CommentModel from "../models/comment.model";
 import PostModel from "../models/post.model";
 import { BadRequestException, NotFoundException } from "../utils/app-error";
 import { getSocketIO } from "../lib/socket";
+import { createNotification } from "./notification.service";
 
 export const createCommentService = async (
    postId: string,
@@ -25,6 +26,13 @@ export const createCommentService = async (
    await post.save();
 
    const populatedComment = await comment.populate("user", "name avatar");
+
+   await createNotification({
+      actorId: userId,
+      recipientId: post.user._id.toString(),
+      type: "comment",
+      postId
+   });
 
 
    const io = getSocketIO();

@@ -1,5 +1,6 @@
 import FollowModel from "../models/follow.model";
 import UserModel from "../models/user.model";
+import { createNotification } from "./notification.service";
 
 
 export const followUserService = async (currentUserId: string, userIdToFollow: string) => {
@@ -24,6 +25,12 @@ export const followUserService = async (currentUserId: string, userIdToFollow: s
    });
 
    await followDoc.save();
+
+   await createNotification({
+      actorId: currentUserId,
+      recipientId: userIdToFollow,
+      type: "follow"
+   })
 
    return followDoc;
 }
