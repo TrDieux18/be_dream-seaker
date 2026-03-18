@@ -172,14 +172,6 @@ export const emitMessagesCleared = (chatId: string) => {
    io.to(`chat:${chatId}`).emit("chat:messages-cleared", { chatId });
 };
 
-export const emitMessageEditedToChatRoom = (
-   chatId: string,
-   message: any
-) => {
-   const io = getIO();
-   io.to(`chat:${chatId}`).emit("message:edited", { message, chatId });
-};
-
 export const emitChatDeletedToParticipants = (
    participantIds: string[],
    chatId: string

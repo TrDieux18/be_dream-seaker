@@ -74,6 +74,27 @@ npm install
 npm run dev
 ```
 
+## Post Image Migration
+
+Migrate legacy post images stored as base64 in MongoDB to Cloudinary URLs.
+
+Dry run (no DB writes):
+
+```bash
+npm run migrate:post-images:dry
+```
+
+Write changes:
+
+```bash
+npm run migrate:post-images
+```
+
+Optional flags:
+
+- `--limit=50` process up to 50 matched posts
+- `--postId=<mongo_object_id>` migrate a single post
+
 ## API Endpoints
 
 - `/api/auth/*` - Authentication routes
@@ -91,4 +112,5 @@ npm run dev
 - `chat:group-updated` - Group settings changed
 - `chat:deleted` - Chat removed
 - `online:users` - Online users list
+
 # be_dream-seaker

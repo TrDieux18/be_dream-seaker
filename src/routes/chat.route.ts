@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { passportAuthenticateJwt } from "../config/passport.config";
 import { createChatController, deleteChatController, deleteGroupImageController, deleteGroupNameController, getSingleChatController, getUserChatsController, markChatAsReadController, updateGroupImageController, updateGroupNameController } from "../controllers/chat.controller";
-import { clearChatMessagesController, deleteMessageController, editMessageController, sendMessageController } from "../controllers/message.controller";
+import { clearChatMessagesController, deleteMessageController, sendMessageController } from "../controllers/message.controller";
 
 const chatRoutes = Router()
    .use(passportAuthenticateJwt)
@@ -16,7 +16,6 @@ const chatRoutes = Router()
    .delete("/group/name", deleteGroupNameController)
    .delete("/delete", deleteChatController)
    .delete("/message/:id", deleteMessageController)
-   .delete("/messages/clear", clearChatMessagesController)
-   .put("/message/edit", editMessageController);
+   .delete("/messages/clear", clearChatMessagesController);
 
 export default chatRoutes;

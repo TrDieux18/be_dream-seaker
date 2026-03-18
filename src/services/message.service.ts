@@ -84,6 +84,8 @@ export const deleteMessageService = async (
   messageId: string,
   userId: string
 ) => {
+  const normalizedUserId = userId.toString();
+
   const message = await MessageModel.findById(messageId);
 
   if (!message) {
@@ -92,7 +94,7 @@ export const deleteMessageService = async (
 
   const chat = await ChatModel.findOne({
     _id: message.chatId,
-    participants: { $in: [userId] },
+    participants: { $in: [normalizedUserId] },
   });
 
   if (!chat) {
@@ -101,9 +103,12 @@ export const deleteMessageService = async (
     );
   }
 
+  if (message.sender.toString() !== normalizedUserId) {
+    throw new BadRequestException("You can only delete your own messages");
+  }
+
   await MessageModel.findByIdAndDelete(messageId);
 
-  
   if (chat.lastMessage?.toString() === messageId) {
     const newLastMessage = await MessageModel.findOne({
       chatId: message.chatId,
@@ -114,10 +119,19 @@ export const deleteMessageService = async (
     chat.lastMessage = newLastMessage?._id || null;
     await chat.save();
 
-    return { messageId, chatId: message.chatId.toString(), newLastMessage };
+    return {
+      messageId,
+      chatId: message.chatId.toString(),
+      newLastMessage: newLastMessage || null,
+      wasLastMessageDeleted: true,
+    };
   }
 
-  return { messageId, chatId: message.chatId.toString(), newLastMessage: null };
+  return {
+    messageId,
+    chatId: message.chatId.toString(),
+    wasLastMessageDeleted: false,
+  };
 };
 
 export const clearChatMessagesService = async (
@@ -141,52 +155,4 @@ export const clearChatMessagesService = async (
   await chat.save();
 
   return { chatId };
-};
-
-export const editMessageService = async (
-  messageId: string,
-  userId: string,
-  newContent: string
-) => {
-  const message = await MessageModel.findById(messageId);
-
-  if (!message) {
-    throw new NotFoundException("Message not found");
-  }
-
-  // Only the sender can edit the message
-  if (message.sender.toString() !== userId) {
-    throw new BadRequestException("You can only edit your own messages");
-  }
-
-  // Check if user is still a participant in the chat
-  const chat = await ChatModel.findOne({
-    _id: message.chatId,
-    participants: { $in: [userId] },
-  });
-
-  if (!chat) {
-    throw new BadRequestException("You are not authorized to edit this message");
-  }
-
-  // Cannot edit messages with images (for now)
-  if (message.image) {
-    throw new BadRequestException("Cannot edit messages with images");
-  }
-
-  message.content = newContent;
-  await message.save();
-
-  const updatedMessage = await MessageModel.findById(messageId)
-    .populate("sender", "name avatar")
-    .populate({
-      path: "replyTo",
-      select: "content image sender",
-      populate: {
-        path: "sender",
-        select: "name avatar",
-      },
-    });
-
-  return { message: updatedMessage, chatId: message.chatId.toString() };
 };

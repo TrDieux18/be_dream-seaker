@@ -14,8 +14,3 @@ export const sendMessageSchema = z.object({
 export const messageIdSchema = z.object({
    id: z.string().trim().min(1)
 });
-
-export const editMessageSchema = z.object({
-   messageId: z.string().trim().min(1),
-   content: z.string().trim().min(1, "Message content cannot be empty")
-});

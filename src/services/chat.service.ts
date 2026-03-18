@@ -15,8 +15,6 @@ export const createChatService = async (
   }
 ) => {
 
-
-
   const { participantId, isGroup, participants, groupName } = body;
 
   let chat;
@@ -56,6 +54,7 @@ export const createChatService = async (
     "participants",
     "name avatar"
   );
+  
   const particpantIdStrings = populatedChat?.participants?.map((p) => {
     return p._id?.toString();
   });
@@ -110,7 +109,6 @@ export const getUserChatsService = async (
 };
 
 export const getSingleChatService = async (chatId: string, userId: string) => {
-
 
   const chat = await ChatModel.findOne({
     _id: chatId,
@@ -283,6 +281,7 @@ export const markChatAsReadService = async (
   userId: string,
   messageId: string
 ) => {
+
   const chat = await ChatModel.findOne({
     _id: chatId,
     participants: { $in: [userId] },

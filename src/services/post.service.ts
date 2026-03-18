@@ -1,10 +1,12 @@
 import PostModel from "../models/post.model";
 import CommentModel from "../models/comment.model";
 import FollowModel from "../models/follow.model";
-import { BadRequestException, NotFoundException } from "../utils/app-error";
+import { BadRequestException, InternalServerException, NotFoundException } from "../utils/app-error";
 import { getSocketIO } from "../lib/socket";
 import UserSavePostModel from "../models/user-save-post.model";
 import { createNotification } from "./notification.service";
+import cloudinary from "../config/cloudinary.config";
+import { extractCloudinaryPublicIdFromUrl, isBase64ImageDataUrl, isWebUrl } from "../utils/cloudinary-image";
 
 const FEED_USER_FIELDS = "name username avatar";
 
@@ -21,10 +23,42 @@ export const createPostService = async (
       location?: string;
    }
 ) => {
+   let uploadedImageUrls: string[];
+
+   try {
+      uploadedImageUrls = await Promise.all(
+         body.images.map(async (image) => {
+            // Keep pre-uploaded URLs, upload only base64/local payloads.
+            if (isWebUrl(image)) {
+               return image;
+            }
+
+            if (!isBase64ImageDataUrl(image)) {
+               throw new BadRequestException("Invalid image format. Expected image URL or base64 data URL");
+            }
+
+            const uploadRes = await cloudinary.uploader.upload(image, {
+               folder: "post-images",
+               resource_type: "image",
+               transformation: [{ quality: "auto" }]
+            });
+
+            return uploadRes.secure_url;
+         })
+      );
+   } catch (error) {
+      console.error("Cloudinary post upload error:", error);
+      if (error instanceof BadRequestException) {
+         throw error;
+      }
+
+      throw new InternalServerException("Failed to upload one or more images");
+   }
+
    const post = await PostModel.create({
       user: userId,
       caption: body.caption || "",
-      images: body.images,
+      images: uploadedImageUrls,
       location: body.location || ""
    });
 
@@ -133,6 +167,29 @@ export const deletePostService = async (postId: string, userId: string) => {
 
    if (post.user.toString() !== userId) {
       throw new BadRequestException("You are not authorized to delete this post");
+   }
+
+   const cloudinaryPublicIds = post.images
+      .map((imageUrl) => extractCloudinaryPublicIdFromUrl(imageUrl))
+      .filter((publicId): publicId is string => Boolean(publicId));
+
+   if (cloudinaryPublicIds.length > 0) {
+      const destroyResults = await Promise.allSettled(
+         cloudinaryPublicIds.map((publicId) => cloudinary.uploader.destroy(publicId, { resource_type: "image" }))
+      );
+
+      const hasDeleteErrors = destroyResults.some((result) => {
+         if (result.status === "rejected") {
+            return true;
+         }
+
+         const destroyResult = result.value?.result;
+         return destroyResult !== "ok" && destroyResult !== "not found";
+      });
+
+      if (hasDeleteErrors) {
+         throw new InternalServerException("Failed to delete one or more post images from Cloudinary");
+      }
    }
 
    // Delete all comments associated with the post

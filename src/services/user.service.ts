@@ -35,7 +35,6 @@ export const getUserProfileService = async (userId: string, currentUserId: strin
    }
 
 
-
    const postsCount = await PostModel.countDocuments({ user: userId });
 
 

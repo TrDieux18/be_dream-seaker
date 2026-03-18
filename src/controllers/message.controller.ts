@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../middleware/async-handler.middleware";
-import { editMessageSchema, messageIdSchema, sendMessageSchema } from "../validators/message.validator";
+import { messageIdSchema, sendMessageSchema } from "../validators/message.validator";
 import { HTTPSTATUS } from "../config/http.config";
-import { clearChatMessagesService, deleteMessageService, editMessageService, sendMessageService } from "../services/message.service";
-import { emitLastMessageToParticipants, emitMessageDeletedToChatRoom, emitMessageEditedToChatRoom, emitMessagesCleared } from "../lib/socket";
+import { clearChatMessagesService, deleteMessageService, sendMessageService } from "../services/message.service";
+import { emitLastMessageToParticipants, emitMessageDeletedToChatRoom, emitMessagesCleared } from "../lib/socket";
 import ChatModel from "../models/chat.model";
 import { chatIdBodySchema } from "../validators/chat.validator";
 
@@ -34,18 +34,23 @@ export const deleteMessageController = asyncHandler(
       emitMessageDeletedToChatRoom(result.chatId, result.messageId);
 
       // If last message was updated, emit to participants
-      if (result.newLastMessage !== undefined) {
+      if (result.wasLastMessageDeleted) {
          const chat = await ChatModel.findById(result.chatId);
          if (chat) {
             const participantIds = chat.participants.map((p) => p.toString());
-            emitLastMessageToParticipants(participantIds, result.chatId, result.newLastMessage);
+            emitLastMessageToParticipants(
+               participantIds,
+               result.chatId,
+               result.newLastMessage ?? null
+            );
          }
       }
 
       return res.status(HTTPSTATUS.OK).json({
          message: "Message deleted successfully",
          messageId: result.messageId,
-         newLastMessage: result.newLastMessage
+         newLastMessage: result.newLastMessage ?? null,
+         wasLastMessageDeleted: result.wasLastMessageDeleted
       })
    }
 )
@@ -70,23 +75,6 @@ export const clearChatMessagesController = asyncHandler(
       return res.status(HTTPSTATUS.OK).json({
          message: "Chat messages cleared successfully",
          chatId: result.chatId
-      })
-   }
-)
-
-export const editMessageController = asyncHandler(
-   async (req: Request, res: Response) => {
-      const userId = req.user?._id;
-      const body = editMessageSchema.parse(req.body);
-
-      const result = await editMessageService(body.messageId, userId as string, body.content);
-
-      // Emit socket event to chat room
-      emitMessageEditedToChatRoom(result.chatId, result.message);
-
-      return res.status(HTTPSTATUS.OK).json({
-         message: "Message edited successfully",
-         editedMessage: result.message
       })
    }
 )
