@@ -6,7 +6,7 @@ export interface CommentDocument extends Document {
    content: string;
    likes: mongoose.Types.ObjectId[];
    likesCount: number;
-   parentComment?: mongoose.Types.ObjectId;
+
    createdAt: Date;
    updatedAt: Date;
 }
@@ -38,11 +38,7 @@ const commentSchema = new Schema<CommentDocument>(
          type: Number,
          default: 0
       },
-      parentComment: {
-         type: Schema.Types.ObjectId,
-         ref: "Comment",
-         default: null
-      }
+
    },
    {
       timestamps: true

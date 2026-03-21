@@ -2,9 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../middleware/async-handler.middleware";
 import { HTTPSTATUS } from "../config/http.config";
 import {
-   deleteCommentService,
-   likeCommentService,
-   unlikeCommentService
+   deleteCommentService
 } from "../services/comment.service";
 import { commentIdSchema } from "../validators/comment.validator";
 
@@ -16,33 +14,5 @@ export const deleteCommentController = asyncHandler(
       const result = await deleteCommentService(commentId, userId);
 
       return res.status(HTTPSTATUS.OK).json(result);
-   }
-);
-
-export const likeCommentController = asyncHandler(
-   async (req: Request, res: Response) => {
-      const userId = req.user?._id?.toString() || "";
-      const { commentId } = commentIdSchema.parse(req.params);
-
-      const comment = await likeCommentService(commentId, userId);
-
-      return res.status(HTTPSTATUS.OK).json({
-         message: "Comment liked successfully",
-         comment
-      });
-   }
-);
-
-export const unlikeCommentController = asyncHandler(
-   async (req: Request, res: Response) => {
-      const userId = req.user?._id?.toString() || "";
-      const { commentId } = commentIdSchema.parse(req.params);
-
-      const comment = await unlikeCommentService(commentId, userId);
-
-      return res.status(HTTPSTATUS.OK).json({
-         message: "Comment unliked successfully",
-         comment
-      });
    }
 );

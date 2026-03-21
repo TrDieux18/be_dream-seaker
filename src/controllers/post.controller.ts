@@ -56,7 +56,7 @@ export const getUserPostsController = asyncHandler(
       return res.status(HTTPSTATUS.OK).json({
          message: "User posts retrieved successfully",
          posts
-      });
+      }); 
    }
 );
 

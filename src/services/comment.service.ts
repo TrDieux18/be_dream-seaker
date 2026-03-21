@@ -18,7 +18,6 @@ export const createCommentService = async (
       post: postId,
       user: userId,
       content: body.content,
-      parentComment: null
    });
 
 
@@ -99,40 +98,4 @@ export const deleteCommentService = async (commentId: string, userId: string) =>
    }
 
    return { message: "Comment deleted successfully" };
-};
-
-export const likeCommentService = async (commentId: string, userId: string) => {
-   const comment = await CommentModel.findById(commentId);
-
-   if (!comment) throw new NotFoundException("Comment not found");
-
-   const alreadyLiked = comment.likes.includes(userId as any);
-
-   if (alreadyLiked) {
-      throw new BadRequestException("You already liked this comment");
-   }
-
-   comment.likes.push(userId as any);
-   comment.likesCount = comment.likes.length;
-   await comment.save();
-
-   return comment;
-};
-
-export const unlikeCommentService = async (commentId: string, userId: string) => {
-   const comment = await CommentModel.findById(commentId);
-
-   if (!comment) throw new NotFoundException("Comment not found");
-
-   const likeIndex = comment.likes.findIndex((id) => id.toString() === userId);
-
-   if (likeIndex === -1) {
-      throw new BadRequestException("You have not liked this comment");
-   }
-
-   comment.likes.splice(likeIndex, 1);
-   comment.likesCount = comment.likes.length;
-   await comment.save();
-
-   return comment;
 };
