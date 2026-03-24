@@ -1,116 +1,146 @@
 # Real-time Message Backend
 
-Backend API cho ứng dụng nhắn tin thời gian thực.
+Backend API cho he thong chat + social feed theo thoi gian thuc.
 
-## Tech Stack
+## Tong quan
 
-- **Node.js** + **Express.js** - RESTful API
-- **TypeScript** - Type safety
-- **MongoDB** + **Mongoose** - Database & ODM
-- **Socket.io** - Real-time communication
-- **Cloudinary** - Image storage & optimization
-- **Passport.js** + **JWT** - Authentication
-- **Zod** - Request validation
+Backend cung cap:
 
-## Core Features
+- Xac thuc nguoi dung (JWT + cookie).
+- Quan ly chat 1-1, group chat, tin nhan, reply, edit/delete message.
+- Social feed (post, comment, follow, notification).
+- Realtime voi Socket.IO cho message va trang thai online.
+- Upload/quan ly anh qua Cloudinary.
 
-### Authentication
+## Deploy lien quan
 
-- User registration & login
-- JWT-based authentication
-- Session management with cookies
+- Frontend da deploy: https://fe-dream-seeker-gehw.vercel.app
 
-### Chat Management
+## Cong nghe su dung
 
-- Create 1-on-1 & group chats
-- Real-time message delivery
-- Message history retrieval
-- Group settings (name, image)
-- Chat deletion
+- Node.js + Express
+- TypeScript
+- MongoDB + Mongoose
+- Socket.IO
+- Passport JWT
+- Zod
+- Cloudinary
 
-### Message Features
+## Cau truc thu muc
 
-- Send text & image messages
-- Reply to messages
-- Edit messages (text only)
-- Delete messages
-- Clear chat history
-
-### Real-time Updates
-
-- New message notifications
-- Online/offline status
-- Group updates sync
-- Message edit/delete sync
-
-## Project Structure
-
-```
+```text
 src/
-├── config/         # Configuration files
-├── controllers/    # Request handlers
-├── services/       # Business logic
-├── models/         # Database schemas
-├── routes/         # API routes
-├── middleware/     # Custom middleware
-├── validators/     # Zod schemas
-├── lib/           # Socket.io setup
-└── utils/         # Helper functions
+	config/         # env, database, cloudinary, passport, http constants
+	controllers/    # nhan request va tra response
+	services/       # business logic
+	models/         # mongoose models
+	routes/         # route grouping theo module
+	validators/     # zod schemas
+	middleware/     # async handler + error handler
+	lib/            # socket setup
+	scripts/        # script migration/maintenance
+	utils/          # helper chung
 ```
 
-## Getting Started
+## Yeu cau moi truong
 
-1. Install dependencies:
+- Node.js 18+
+- npm 9+
+- MongoDB instance
+- Tai khoan Cloudinary
+
+## Cai dat va chay local
+
+1. Cai dependency
 
 ```bash
 npm install
 ```
 
-2. Configure environment variables in `.env`
+2. Tao file .env trong thu muc backend
 
-3. Start development server:
+```env
+NODE_ENV=development
+PORT=3001
+MONGO_URL=mongodb://localhost:27017/realtime-message
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRES_IN=7d
+FRONTEND_ORIGIN=http://localhost:5173,https://fe-dream-seeker-gehw.vercel.app
+
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
+3. Chay development
 
 ```bash
 npm run dev
 ```
 
-## Post Image Migration
+4. Build production
 
-Migrate legacy post images stored as base64 in MongoDB to Cloudinary URLs.
+```bash
+npm run build
+```
 
-Dry run (no DB writes):
+5. Chay production
+
+```bash
+npm start
+```
+
+## Scripts
+
+- npm run dev: chay server voi nodemon
+- npm run dev:debug: chay nodemon kem inspect
+- npm run build: compile TypeScript ra dist
+- npm start: chay dist/index.js
+
+## API va health check
+
+- Health check: GET /health
+- Base API: /api
+- Nhom route:
+  - /api/auth
+  - /api/user
+  - /api/chat
+  - /api/post
+  - /api/comment
+  - /api/follow
+  - /api/notification
+
+## Socket realtime
+
+Su kien realtime chinh:
+
+- Tin nhan moi
+- Chinh sua/xoa tin nhan
+- Tao/cap nhat/xoa group chat
+- Dong bo danh sach nguoi dung online
+
+## Migration anh bai viet
+
+Neu du lieu cu luu anh post dang base64 trong MongoDB, dung script migration sang Cloudinary.
+
+Dry run (khong ghi DB):
 
 ```bash
 npm run migrate:post-images:dry
 ```
 
-Write changes:
+Thuc thi migration:
 
 ```bash
 npm run migrate:post-images
 ```
 
-Optional flags:
+Co the truyen them:
 
-- `--limit=50` process up to 50 matched posts
-- `--postId=<mongo_object_id>` migrate a single post
+- --limit=50
+- --postId=<mongo_object_id>
 
-## API Endpoints
+## Ghi chu
 
-- `/api/auth/*` - Authentication routes
-- `/api/user/*` - User management
-- `/api/chat/*` - Chat & message operations
-- `/api/post/*` - Social feed features
-- `/api/comment/*` - Comment system
-
-## Socket Events
-
-- `chat:new` - New chat created
-- `message:new` - New message received
-- `message:edited` - Message updated
-- `message:deleted` - Message removed
-- `chat:group-updated` - Group settings changed
-- `chat:deleted` - Chat removed
-- `online:users` - Online users list
-
-# be_dream-seaker
+- Nho set dung FRONTEND_ORIGIN de CORS cho phep domain deploy frontend.
+- API dang su dung cookie (withCredentials), can cau hinh dong bo voi frontend.
