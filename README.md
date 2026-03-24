@@ -1,22 +1,22 @@
 # Real-time Message Backend
 
-Backend API cho he thong chat + social feed theo thoi gian thuc.
+Backend API for a real-time chat and social feed application.
 
-## Tong quan
+## Overview
 
-Backend cung cap:
+The backend provides:
 
-- Xac thuc nguoi dung (JWT + cookie).
-- Quan ly chat 1-1, group chat, tin nhan, reply, edit/delete message.
-- Social feed (post, comment, follow, notification).
-- Realtime voi Socket.IO cho message va trang thai online.
-- Upload/quan ly anh qua Cloudinary.
+- User authentication (JWT + cookie).
+- 1-1 chat and group chat management, including reply, edit, and delete message actions.
+- Social feed features (posts, comments, follow, notifications).
+- Real-time updates with Socket.IO for messages and online status.
+- Image upload and management with Cloudinary.
 
-## Deploy lien quan
+## Related Deployment
 
-- Frontend da deploy: https://fe-dream-seeker-gehw.vercel.app
+- Frontend deployed at: https://fe-dream-seeker-gehw.vercel.app
 
-## Cong nghe su dung
+## Tech Stack
 
 - Node.js + Express
 - TypeScript
@@ -26,38 +26,38 @@ Backend cung cap:
 - Zod
 - Cloudinary
 
-## Cau truc thu muc
+## Folder Structure
 
 ```text
 src/
-	config/         # env, database, cloudinary, passport, http constants
-	controllers/    # nhan request va tra response
-	services/       # business logic
-	models/         # mongoose models
-	routes/         # route grouping theo module
-	validators/     # zod schemas
-	middleware/     # async handler + error handler
-	lib/            # socket setup
-	scripts/        # script migration/maintenance
-	utils/          # helper chung
+  config/         # env, database, cloudinary, passport, HTTP constants
+  controllers/    # request handlers
+  services/       # business logic
+  models/         # mongoose models
+  routes/         # grouped routes by module
+  validators/     # zod schemas
+  middleware/     # async handler + error handler
+  lib/            # socket setup
+  scripts/        # migration/maintenance scripts
+  utils/          # shared helpers
 ```
 
-## Yeu cau moi truong
+## Environment Requirements
 
 - Node.js 18+
 - npm 9+
 - MongoDB instance
-- Tai khoan Cloudinary
+- Cloudinary account
 
-## Cai dat va chay local
+## Setup and Run Locally
 
-1. Cai dependency
+1. Install dependencies
 
 ```bash
 npm install
 ```
 
-2. Tao file .env trong thu muc backend
+2. Create a `.env` file in the backend folder
 
 ```env
 NODE_ENV=development
@@ -72,19 +72,19 @@ CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 ```
 
-3. Chay development
+3. Run in development mode
 
 ```bash
 npm run dev
 ```
 
-4. Build production
+4. Build for production
 
 ```bash
 npm run build
 ```
 
-5. Chay production
+5. Start production server
 
 ```bash
 npm start
@@ -92,55 +92,55 @@ npm start
 
 ## Scripts
 
-- npm run dev: chay server voi nodemon
-- npm run dev:debug: chay nodemon kem inspect
-- npm run build: compile TypeScript ra dist
-- npm start: chay dist/index.js
+- npm run dev: run server with nodemon
+- npm run dev:debug: run nodemon with inspect mode
+- npm run build: compile TypeScript to `dist`
+- npm start: run `dist/index.js`
 
-## API va health check
+## API and Health Check
 
 - Health check: GET /health
 - Base API: /api
-- Nhom route:
-  - /api/auth
-  - /api/user
-  - /api/chat
-  - /api/post
-  - /api/comment
-  - /api/follow
-  - /api/notification
+- Route groups:
+- /api/auth
+- /api/user
+- /api/chat
+- /api/post
+- /api/comment
+- /api/follow
+- /api/notification
 
-## Socket realtime
+## Real-time Socket
 
-Su kien realtime chinh:
+Main real-time events include:
 
-- Tin nhan moi
-- Chinh sua/xoa tin nhan
-- Tao/cap nhat/xoa group chat
-- Dong bo danh sach nguoi dung online
+- New messages
+- Message edits/deletes
+- Group chat create/update/delete
+- Online users synchronization
 
-## Migration anh bai viet
+## Post Image Migration
 
-Neu du lieu cu luu anh post dang base64 trong MongoDB, dung script migration sang Cloudinary.
+If legacy post images are stored as base64 in MongoDB, use the migration script to move them to Cloudinary.
 
-Dry run (khong ghi DB):
+Dry run (no DB writes):
 
 ```bash
 npm run migrate:post-images:dry
 ```
 
-Thuc thi migration:
+Run migration:
 
 ```bash
 npm run migrate:post-images
 ```
 
-Co the truyen them:
+Optional flags:
 
 - --limit=50
 - --postId=<mongo_object_id>
 
-## Ghi chu
+## Notes
 
-- Nho set dung FRONTEND_ORIGIN de CORS cho phep domain deploy frontend.
-- API dang su dung cookie (withCredentials), can cau hinh dong bo voi frontend.
+- Make sure `FRONTEND_ORIGIN` is set correctly so CORS allows the frontend deploy domain.
+- The API uses cookies (`withCredentials`), so frontend and backend CORS settings must match.
