@@ -41,6 +41,9 @@ app.use(
    })
 );
 
+console.log("CORS ORIGIN:", Env.FRONTEND_ORIGIN);
+console.log("PARSED:", Env.FRONTEND_ORIGIN.split(",").map(o => o.trim()));
+
 
 app.use(passport.initialize());
 
