@@ -34,7 +34,9 @@ app.use(cookieParser())
 app.use(express.urlencoded({ extended: true }));
 app.use(
    cors({
-      origin: Env.FRONTEND_ORIGIN ? Env.FRONTEND_ORIGIN.split(",") : [],
+      origin: Env.FRONTEND_ORIGIN
+         ? Env.FRONTEND_ORIGIN.split(",").map(o => o.trim())
+         : [],
       credentials: true
    })
 );
