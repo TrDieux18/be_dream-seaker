@@ -11,4 +11,6 @@ export const Env = {
    CLOUDINARY_CLOUD_NAME: getEnv('CLOUDINARY_CLOUD_NAME'),
    CLOUDINARY_API_KEY: getEnv('CLOUDINARY_API_KEY'),
    CLOUDINARY_API_SECRET: getEnv('CLOUDINARY_API_SECRET'),
+   VALKEY_URL: getEnv('VALKEY_URL', 'redis://localhost:6379'),
+   KAFKA_BROKERS: getEnv('KAFKA_BROKERS', 'localhost:9092'),
 } as const;

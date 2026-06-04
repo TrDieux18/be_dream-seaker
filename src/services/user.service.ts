@@ -3,6 +3,7 @@ import PostModel from "../models/post.model";
 import ChatModel from "../models/chat.model";
 import { NotFoundException } from "../utils/app-error";
 import FollowModel from "../models/follow.model";
+import { valkey } from "../lib/valkey";
 
 export const findByIdUserService = async (userId: string) => {
    return await UserModel.findById(userId);
@@ -28,22 +29,50 @@ export const getUsersService = async (userId: string, query?: string) => {
 };
 
 export const getUserProfileService = async (userId: string, currentUserId: string) => {
+   const cacheKey = `user:profile:${userId}`;
+   let cachedData: any = null;
 
-   const user = await UserModel.findById(userId).select("-password");
-   if (!user) {
-      throw new NotFoundException("User not found");
+   try {
+      const cached = await valkey.get(cacheKey);
+      if (cached) {
+         cachedData = JSON.parse(cached);
+      }
+   } catch (err) {
+      console.error("Valkey get profile error:", err);
    }
 
+   let user: any;
+   let stats: any;
 
-   const postsCount = await PostModel.countDocuments({ user: userId });
+   if (cachedData) {
+      user = cachedData.user;
+      stats = cachedData.stats;
+   } else {
+      user = await UserModel.findById(userId).select("-password");
+      if (!user) {
+         throw new NotFoundException("User not found");
+      }
 
+      const postsCount = await PostModel.countDocuments({ user: userId });
+      const chatsCount = await ChatModel.countDocuments({
+         participants: { $in: [userId] }
+      });
+      const followersCount = await FollowModel.countDocuments({ followingId: userId });
+      const followingCount = await FollowModel.countDocuments({ followerId: userId });
 
-   const chatsCount = await ChatModel.countDocuments({
-      participants: { $in: [userId] }
-   });
+      stats = {
+         posts: postsCount,
+         followers: followersCount,
+         following: followingCount,
+         chats: chatsCount
+      };
 
-   const followersCount = await FollowModel.countDocuments({ followingId: userId });
-   const followingCount = await FollowModel.countDocuments({ followerId: userId });
+      try {
+         await valkey.set(cacheKey, JSON.stringify({ user, stats }), "EX", 600); // 10 minutes TTL
+      } catch (err) {
+         console.error("Valkey set profile error:", err);
+      }
+   }
 
    const isOwnProfile = userId === currentUserId.toString();
 
@@ -55,12 +84,7 @@ export const getUserProfileService = async (userId: string, currentUserId: strin
 
    return {
       user,
-      stats: {
-         posts: postsCount,
-         followers: followersCount,
-         following: followingCount,
-         chats: chatsCount
-      },
+      stats,
       isOwnProfile,
       isFollowing: !!isFollowing
    };
@@ -104,6 +128,12 @@ export const updateUserProfileService = async (
    if (updates.username) user.username = updates.username;
 
    await user.save();
+
+   try {
+      await valkey.del(`user:profile:${userId}`);
+   } catch (err) {
+      console.error("Valkey delete profile error:", err);
+   }
 
    const { password, ...userObject } = user.toObject();
 

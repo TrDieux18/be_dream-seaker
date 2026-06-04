@@ -3,14 +3,13 @@ import jwt from "jsonwebtoken";
 import { Server, type Socket } from "socket.io";
 import { Env } from "../config/env.config";
 import { validateChatParticipant } from "../services/chat.service";
+import { valkey } from "./valkey";
 
 interface AuthenticatedSocket extends Socket {
    userId?: string;
 }
 
 let io: Server | null = null;
-
-const onlineUsers = new Map<string, string>();
 
 export const initializeSocket = (httpServer: HTTPServer) => {
    io = new Server(httpServer, {
@@ -57,7 +56,7 @@ export const initializeSocket = (httpServer: HTTPServer) => {
       }
    });
 
-   io.on("connection", (socket: AuthenticatedSocket) => {
+   io.on("connection", async (socket: AuthenticatedSocket) => {
       const userId = socket.userId!;
       const newSocketId = socket.id;
       if (!socket.userId) {
@@ -65,13 +64,18 @@ export const initializeSocket = (httpServer: HTTPServer) => {
          return;
       }
 
-      //register socket for the user
-      onlineUsers.set(userId, newSocketId);
+      // register socket for the user in Valkey Hash
+      try {
+         await valkey.hset("online:users", userId, newSocketId);
 
-      //BroadCast online users to all socket
-      io?.emit("online:users", Array.from(onlineUsers.keys()));
+         // BroadCast online users to all socket
+         const keys = await valkey.hkeys("online:users");
+         io?.emit("online:users", keys);
+      } catch (err) {
+         console.error("Valkey online user set error:", err);
+      }
 
-      //create personnal room for user
+      // create personnal room for user
       socket.join(`user:${userId}`);
 
       socket.on(
@@ -93,10 +97,18 @@ export const initializeSocket = (httpServer: HTTPServer) => {
          }
       });
 
-      socket.on("disconnect", () => {
-         if (onlineUsers.get(userId) === newSocketId) {
-            if (userId) onlineUsers.delete(userId);
-            io?.emit("online:users", Array.from(onlineUsers.keys()));
+      socket.on("disconnect", async () => {
+         try {
+            const currentSocketId = await valkey.hget("online:users", userId);
+            if (currentSocketId === newSocketId) {
+               if (userId) {
+                  await valkey.hdel("online:users", userId);
+               }
+               const keys = await valkey.hkeys("online:users");
+               io?.emit("online:users", keys);
+            }
+         } catch (err) {
+            console.error("Valkey online user disconnect error:", err);
          }
       });
    });
@@ -121,13 +133,18 @@ export const emitNewChatToParticpants = (
    }
 };
 
-export const emitNewMessageToChatRoom = (
+export const emitNewMessageToChatRoom = async (
    senderId: string,
    chatId: string,
    message: any
 ) => {
    const io = getIO();
-   const senderSocketId = onlineUsers.get(senderId?.toString());
+   let senderSocketId: string | null = null;
+   try {
+      senderSocketId = await valkey.hget("online:users", senderId?.toString());
+   } catch (err) {
+      console.error("Valkey get sender socket error:", err);
+   }
 
    if (senderSocketId) {
       io.to(`chat:${chatId}`).except(senderSocketId).emit("message:new", message);

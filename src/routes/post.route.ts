@@ -9,7 +9,6 @@ import {
    unlikePostController,
    createCommentController,
    getCommentsController,
-   getUserPostsController,
    savePostController,
    unsavePostController,
    getSavedPostsController
@@ -20,7 +19,6 @@ const postRouter = Router()
    .post("/create", createPostController)
    .get("/feed", getFeedController)
    .get("/saved", getSavedPostsController)
-   .get("/user/:userId", getUserPostsController)
    .get("/:postId", getPostByIdController)
    .delete("/:postId", deletePostController)
    .post("/:postId/like", likePostController)

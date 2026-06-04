@@ -8,7 +8,6 @@ import {
    deletePostService,
    likePostService,
    unlikePostService,
-   getUserPostsService,
    savePostService,
    unsavePostService,
    getSavedPostsService
@@ -43,20 +42,6 @@ export const getFeedController = asyncHandler(
          message: "Feed retrieved successfully",
          ...result
       });
-   }
-);
-
-export const getUserPostsController = asyncHandler(
-   async (req: Request, res: Response) => {
-      const userId: string = req.user?._id?.toString() || "";
-      const rawUserId = req.params.userId;
-      const targetUserId: string = (Array.isArray(rawUserId) ? rawUserId[0] : rawUserId) || "";
-      const posts = await getUserPostsService(userId, targetUserId);
-
-      return res.status(HTTPSTATUS.OK).json({
-         message: "User posts retrieved successfully",
-         posts
-      }); 
    }
 );
 

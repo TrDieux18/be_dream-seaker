@@ -1,6 +1,7 @@
 import FollowModel from "../models/follow.model";
 import UserModel from "../models/user.model";
 import { createNotification } from "./notification.service";
+import { valkey } from "../lib/valkey";
 
 
 export const followUserService = async (currentUserId: string, userIdToFollow: string) => {
@@ -32,6 +33,18 @@ export const followUserService = async (currentUserId: string, userIdToFollow: s
       type: "follow"
    })
 
+   try {
+      const feedKeys = await valkey.keys(`user:feed:${currentUserId}:*`);
+      const keysToDel = [
+         `user:profile:${currentUserId}`,
+         `user:profile:${userIdToFollow}`,
+         ...feedKeys
+      ];
+      await valkey.del(keysToDel);
+   } catch (err) {
+      console.error("Valkey follow cache invalidate error:", err);
+   }
+
    return followDoc;
 }
 
@@ -49,6 +62,18 @@ export const unfollowUserService = async (currentUserId: string, userIdToUnfollo
 
    if (!followDoc) {
       throw new Error("You are not following this user");
+   }
+
+   try {
+      const feedKeys = await valkey.keys(`user:feed:${currentUserId}:*`);
+      const keysToDel = [
+         `user:profile:${currentUserId}`,
+         `user:profile:${userIdToUnfollow}`,
+         ...feedKeys
+      ];
+      await valkey.del(keysToDel);
+   } catch (err) {
+      console.error("Valkey unfollow cache invalidate error:", err);
    }
 
    return { message: "Unfollowed successfully" };

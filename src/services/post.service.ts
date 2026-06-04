@@ -7,6 +7,7 @@ import UserSavePostModel from "../models/user-save-post.model";
 import { createNotification } from "./notification.service";
 import cloudinary from "../config/cloudinary.config";
 import { extractCloudinaryPublicIdFromUrl, isBase64ImageDataUrl, isWebUrl } from "../utils/cloudinary-image";
+import { valkey } from "../lib/valkey";
 
 const FEED_USER_FIELDS = "name username avatar";
 
@@ -63,7 +64,38 @@ export const createPostService = async (
    });
 
    const populatedPost = await post.populate("user", "name avatar");
+
+   // Invalidate cache
+   await invalidateUserFeedAndFollowers(userId);
+
    return populatedPost;
+};
+
+const invalidateUserFeedAndFollowers = async (userId: string) => {
+   try {
+      // 1. Delete author's profile cache
+      await valkey.del(`user:profile:${userId}`);
+
+      // 2. Delete author's feed cache
+      const authorFeedKeys = await valkey.keys(`user:feed:${userId}:*`);
+      if (authorFeedKeys.length > 0) {
+         await valkey.del(authorFeedKeys);
+      }
+
+      // 3. Find followers and delete their feed caches
+      const followers = await FollowModel.find({ followingId: userId }).select("followerId").lean();
+      if (followers.length > 0) {
+         const deletePromises = followers.map(async (follower) => {
+            const followerFeedKeys = await valkey.keys(`user:feed:${follower.followerId.toString()}:*`);
+            if (followerFeedKeys.length > 0) {
+               await valkey.del(followerFeedKeys);
+            }
+         });
+         await Promise.all(deletePromises);
+      }
+   } catch (err) {
+      console.error("Valkey invalidate feed and profile error:", err);
+   }
 };
 
 const getPrioritizedFeedPosts = async (userIds: string[], skip: number, limit: number) => {
@@ -101,6 +133,16 @@ const getSuggestedFeedPosts = async (excludedUserIds: string[], skip: number, li
 
 
 export const getFeedService = async (userId: string, page: number = 1, limit: number = 10) => {
+   const cacheKey = `user:feed:${userId}:page:${page}:limit:${limit}`;
+   try {
+      const cached = await valkey.get(cacheKey);
+      if (cached) {
+         return JSON.parse(cached);
+      }
+   } catch (err) {
+      console.error("Valkey get feed error:", err);
+   }
+
    const skip = (page - 1) * limit;
 
    const following = await FollowModel.find({ followerId: userId })
@@ -124,7 +166,7 @@ export const getFeedService = async (userId: string, page: number = 1, limit: nu
 
    const total = prioritizedFeed.total + suggestedFeed.total;
 
-   return {
+   const result = {
       posts,
       feedBreakdown: {
          prioritizedCount: prioritizedFeed.posts.length,
@@ -139,15 +181,14 @@ export const getFeedService = async (userId: string, page: number = 1, limit: nu
          pages: Math.ceil(total / limit)
       }
    };
-};
 
-export const getUserPostsService = async (userId: string, targetUserId: string) => {
-   const posts = await PostModel.find({ user: targetUserId })
-      .populate(POST_POPULATE_OPTIONS)
-      .sort({ createdAt: -1 })
-      .lean();
+   try {
+      await valkey.set(cacheKey, JSON.stringify(result), "EX", 300); // 5 minutes TTL
+   } catch (err) {
+      console.error("Valkey set feed error:", err);
+   }
 
-   return posts;
+   return result;
 };
 
 export const getPostByIdService = async (postId: string) => {
@@ -196,23 +237,28 @@ export const deletePostService = async (postId: string, userId: string) => {
    await CommentModel.deleteMany({ post: postId });
 
    await post.deleteOne();
+
+   // Invalidate cache
+   await invalidateUserFeedAndFollowers(userId);
+
    return { message: "Post deleted successfully" };
 };
 
 export const likePostService = async (postId: string, userId: string) => {
-   const post = await PostModel.findById(postId);
+   const post = await PostModel.findOneAndUpdate(
+      { _id: postId, likes: { $ne: userId as any } },
+      {
+         $push: { likes: userId as any },
+         $inc: { likesCount: 1 }
+      },
+      { new: true }
+   );
 
-   if (!post) throw new NotFoundException("Post not found");
-
-   const alreadyLiked = post.likes.includes(userId as any);
-
-   if (alreadyLiked) {
+   if (!post) {
+      const exists = await PostModel.exists({ _id: postId });
+      if (!exists) throw new NotFoundException("Post not found");
       throw new BadRequestException("You already liked this post");
    }
-
-   post.likes.push(userId as any);
-   post.likesCount = post.likes.length;
-   await post.save();
 
    await createNotification({
       actorId: userId,
@@ -235,19 +281,20 @@ export const likePostService = async (postId: string, userId: string) => {
 };
 
 export const unlikePostService = async (postId: string, userId: string) => {
-   const post = await PostModel.findById(postId);
+   const post = await PostModel.findOneAndUpdate(
+      { _id: postId, likes: userId as any },
+      {
+         $pull: { likes: userId as any },
+         $inc: { likesCount: -1 }
+      },
+      { new: true }
+   );
 
-   if (!post) throw new NotFoundException("Post not found");
-
-   const likeIndex = post.likes.findIndex((id) => id.toString() === userId);
-
-   if (likeIndex === -1) {
+   if (!post) {
+      const exists = await PostModel.exists({ _id: postId });
+      if (!exists) throw new NotFoundException("Post not found");
       throw new BadRequestException("You have not liked this post");
    }
-
-   post.likes.splice(likeIndex, 1);
-   post.likesCount = post.likes.length;
-   await post.save();
 
    const io = getSocketIO();
    if (io) {

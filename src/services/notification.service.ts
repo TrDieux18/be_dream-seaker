@@ -1,6 +1,7 @@
-import { getSocketIO } from "../lib/socket";
+import { kafkaProducer } from "../lib/kafka";
 import NotificationModel from "../models/notification.model";
 import UserModel from "../models/user.model";
+import { valkey } from "../lib/valkey";
 
 export type NotificationType = "like" | "comment" | "follow";
 
@@ -23,38 +24,47 @@ export const createNotification = async ({
          return null;
       }
 
-      const created = await NotificationModel.create({
-         actor: actorId,
-         recipient: recipientId,
-         type,
-         post: postId,
-         read: false
+      const payload = { actorId, recipientId, type, postId };
+      await kafkaProducer.send({
+         topic: "notification-events",
+         messages: [{ value: JSON.stringify(payload) }],
       });
 
-      const notification = await NotificationModel.findById(created._id)
-         .populate("actor", "username avatar")
-         .populate("post", "caption")
-         .lean();
-
-      if (notification) {
-         const io = getSocketIO();
-         if (io) {
-            io.to(`user:${recipientId}`).emit("notification:new", notification);
-         }
-      }
-
-      return notification;
+      console.log("📨 Published notification event to Kafka:", payload);
+      return null;
    } catch (error) {
-      console.error("Error creating notification:", error);
-      throw new Error("Failed to create notification");
+      console.error("Error publishing notification to Kafka:", error);
+      throw new Error("Failed to queue notification");
    }
 }
+
+export const clearNotificationCache = async (userId: string) => {
+   try {
+      await valkey.del(`user:notifications:unread-count:${userId}`);
+      const keys = await valkey.keys(`user:notifications:${userId}:*`);
+      if (keys.length > 0) {
+         await valkey.del(keys);
+      }
+   } catch (error) {
+      console.error("Error clearing notification cache for user:", userId, error);
+   }
+};
 
 export const getNotificationService = async (userId: string, page: number = 1, limit: number = 15) => {
    const user = await UserModel.findById(userId);
 
    if (!user) {
       throw new Error("User not found");
+   }
+
+   const cacheKey = `user:notifications:${userId}:page:${page}:limit:${limit}`;
+   try {
+      const cached = await valkey.get(cacheKey);
+      if (cached) {
+         return JSON.parse(cached);
+      }
+   } catch (error) {
+      console.error("Valkey get notification error:", error);
    }
 
    const notifications = await NotificationModel.find({ recipient: userId })
@@ -67,16 +77,39 @@ export const getNotificationService = async (userId: string, page: number = 1, l
 
    const total = await NotificationModel.countDocuments({ recipient: userId });
 
-   return { notifications, total };
+   const result = { notifications, total };
 
+   try {
+      await valkey.set(cacheKey, JSON.stringify(result), "EX", 600);
+   } catch (error) {
+      console.error("Valkey set notification error:", error);
+   }
 
+   return result;
 }
 
 export const getUnreadCountService = async (userId: string) => {
-   const count = await NotificationModel.countDocuments({ recipient: userId, read: false });
-   return { unreadCount: count };
-}
+   const cacheKey = `user:notifications:unread-count:${userId}`;
+   try {
+      const cached = await valkey.get(cacheKey);
+      if (cached) {
+         return JSON.parse(cached);
+      }
+   } catch (error) {
+      console.error("Valkey get unread count error:", error);
+   }
 
+   const count = await NotificationModel.countDocuments({ recipient: userId, read: false });
+   const result = { unreadCount: count };
+
+   try {
+      await valkey.set(cacheKey, JSON.stringify(result), "EX", 600);
+   } catch (error) {
+      console.error("Valkey set unread count error:", error);
+   }
+
+   return result;
+}
 
 export const markNotificationAsReadService = async (userId: string, notificationId: string) => {
    const notification = await NotificationModel.findOneAndUpdate(
@@ -92,6 +125,8 @@ export const markNotificationAsReadService = async (userId: string, notification
       throw new Error("Notification not found or you don't have permission to mark it as read");
    }
 
+   await clearNotificationCache(userId);
+
    return notification;
 }
 
@@ -100,5 +135,8 @@ export const markAllNotificationsAsReadService = async (userId: string) => {
       { recipient: userId, read: false },
       { read: true }
    );
+
+   await clearNotificationCache(userId);
+
    return result;
 }

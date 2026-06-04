@@ -12,6 +12,8 @@ import connectDatabase from "./config/database.config,";
 import "./config/passport.config";
 import routes from "./routes";
 import { initializeSocket } from "./lib/socket";
+import { connectKafka } from "./lib/kafka";
+import { startNotificationConsumer } from "./consumers/notification.consumer";
 
 const app = express();
 
@@ -60,5 +62,7 @@ app.use(errorHandler)
 
 server.listen(Env.PORT, async () => {
    await connectDatabase();
+   await connectKafka();
+   await startNotificationConsumer();
    console.log(`🚀 Server is running on port ${Env.PORT}`);
-})
+});
