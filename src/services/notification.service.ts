@@ -2,6 +2,7 @@ import { kafkaProducer } from "../lib/kafka";
 import NotificationModel from "../models/notification.model";
 import UserModel from "../models/user.model";
 import { valkey } from "../lib/valkey";
+import { getSocketIO } from "../lib/socket";
 
 export type NotificationType = "like" | "comment" | "follow";
 
@@ -19,12 +20,13 @@ export const createNotification = async ({
    postId
 }: CreateNotificationInput) => {
 
-   try {
-      if (actorId === recipientId) {
-         return null;
-      }
+   if (actorId === recipientId) {
+      return null;
+   }
 
-      const payload = { actorId, recipientId, type, postId };
+   const payload = { actorId, recipientId, type, postId };
+
+   try {
       await kafkaProducer.send({
          topic: "notification-events",
          messages: [{ value: JSON.stringify(payload) }],
@@ -33,8 +35,40 @@ export const createNotification = async ({
       console.log("📨 Published notification event to Kafka:", payload);
       return null;
    } catch (error) {
-      console.error("Error publishing notification to Kafka:", error);
-      throw new Error("Failed to queue notification");
+      console.error("⚠️ Error publishing notification to Kafka, falling back to direct database creation:", error);
+
+      try {
+         // Graceful fallback: Save directly to database
+         const created = await NotificationModel.create({
+            actor: actorId,
+            recipient: recipientId,
+            type,
+            post: postId,
+            read: false
+         });
+
+         // Invalidate notification cache for recipient
+         await clearNotificationCache(recipientId);
+
+         // Populate actor and post details for Socket.io
+         const notification = await NotificationModel.findById(created._id)
+            .populate("actor", "username avatar")
+            .populate("post", "caption")
+            .lean();
+
+         if (notification) {
+            const io = getSocketIO();
+            if (io) {
+               io.to(`user:${recipientId}`).emit("notification:new", notification);
+            }
+         }
+         console.log("✅ Fallback processed and dispatched notification directly:", notification);
+         return null;
+      } catch (fallbackError) {
+         console.error("❌ Fallback notification creation also failed:", fallbackError);
+         // Do not throw error so the primary action (e.g. follow, like, comment) doesn't fail
+         return null;
+      }
    }
 }
 
